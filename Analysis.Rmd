@@ -5,6 +5,7 @@ date: "16 de octubre de 2016"
 output: 
   html_document: 
     fig_caption: yes
+    keep_md: yes
 ---
 
 ```{r setup, include=FALSE}
