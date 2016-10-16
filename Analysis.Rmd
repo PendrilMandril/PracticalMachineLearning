@@ -2,7 +2,9 @@
 title: "Practical Machine Learning Project"
 author: "Pendril Mandril"
 date: "16 de octubre de 2016"
-output: html_document
+output: 
+  html_document: 
+    fig_caption: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -17,7 +19,7 @@ In this project, we will be to use data from accelerometers on the belt, forearm
 
 
 ## Data Processing
-### Import the data 
+### Import the data
 
 We first load the needed packages to do de analysis and load the data.
 
