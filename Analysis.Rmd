@@ -1,0 +1,136 @@
+---
+title: "Practical Machine Learning Project"
+author: "Pendril Mandril"
+date: "16 de octubre de 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background and Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+In this project, we will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participant They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. The five ways are exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Only Class A corresponds to correct performance. The goal of this project is to predict the manner in which they did the exercise, i.e., Class A to E. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+## Data Processing
+### Import the data 
+
+We first load the needed packages to do de analysis and load the data.
+
+```{r,message=FALSE, warning=FALSE}
+library(dplyr)
+library(caret)
+library(rpart)
+library(rattle)
+library(randomForest)
+```
+
+
+
+```{r}
+training <- read.csv("pml-training.csv", header = T)
+testing <- read.csv("pml-testing.csv", header = T)
+```
+
+### Data cleaning
+
+We get rid of variables with missing data and also the first seven variables which don't contain useful information.
+
+```{r}
+training <- dplyr::select(training, -c(1:7))
+testing <- dplyr::select(testing, -c(1:7))
+training <- training[,!apply(is.na(training), 2, any)]
+testing <- testing[,!apply(is.na(testing), 2, any)]
+```
+Also, we we'll remove variables with near zero variance
+
+```{r}
+nzv <- nearZeroVar(training,saveMetrics=TRUE)
+training <- training[,nzv$nzv==FALSE]
+
+nzv<- nearZeroVar(testing,saveMetrics=TRUE)
+testing <- testing[,nzv$nzv==FALSE]
+```
+
+
+
+### Data splitting
+Now we'll split the data so we could train and and validate our in-sample results.
+```{r}
+set.seed(1111) 
+inTrain <- createDataPartition(training$classe, p = 0.7, list = FALSE)
+trainSet <- training[inTrain, ]
+validationSet <- training[-inTrain, ]
+```
+
+
+## Creating the models
+We will use cross validation to estimate an out of sample error and get the optimum parameters
+```{r}
+control <- trainControl(method = "repeatedcv", number = 4)
+model.rp <- train(classe ~., trainSet, method = "rpart", na.action = na.omit,
+                  trControl = control, tuneLength = 10)
+print(model.rp)
+```
+
+```{r,echo=FALSE}
+fancyRpartPlot(model.rp$finalModel)
+```
+Now we'll predict outcomes using validation set and show the results
+```{r}
+pred.rp <- predict(model.rp, validationSet)
+conf.rp <- confusionMatrix(validationSet$classe, pred.rp)
+print(conf.rp)
+```
+The results give an accuracy similar as estimated with cross validation.
+
+Looking at those results, let's try a different approach with KNN neighbors
+```{r}
+model.knn <- train(classe ~., trainSet, method = "knn", na.action = na.omit,
+                   trControl = control, tuneLength = 5)
+print(model.knn)
+plot(model.knn)
+```
+
+Again we'll predict outcomes using validation set and show the results
+```{r}
+pred.knn <- predict(model.knn, validationSet)
+conf.knn <- confusionMatrix(validationSet$classe, pred.knn)
+print(conf.knn)
+```
+That's a better accuracy.
+
+Finally we'll do the same with random forest
+
+```{r}
+model.rf <- train(classe ~., trainSet, method = "rf", na.action = na.omit,
+                   trControl = control, tuneLength = 3)
+print(model.rf)
+```
+```{r,echo=FALSE}
+plot(model.rf)
+```
+
+Now again we'll predict outcomes using validation set and show the results
+```{r}
+pred.rf <- predict(model.rf, validationSet)
+conf.rf <- confusionMatrix(validationSet$classe, pred.rf)
+print(conf.rf)
+```
+Which leads to really high accuracy. 
+Thus, random forest is the optimum algorithm between the three studied here.
+
+Then, we will apply random forest to the test set to predict the 20 observations
+```{r}
+pred.test <- predict(model.rf, testing[,1:52])
+print(pred.test)
+```
+
+
+
+
+
